@@ -1,0 +1,154 @@
+;
+;  SOLVE. Solve middle-school algebra equations for a single variable.
+;
+;    James Moen
+;    15 Apr 24
+;
+
+;  SOLVE. Solve the equation LEFT-SIDE = RIGHT-SIDE for VARIABLE.
+
+(define solve
+ (lambda (variable left-side right-side)
+  (if
+   (is-inside variable left-side)
+   (solving variable left-side right-side)
+   (solving variable right-side left-side))) )
+
+;  SOLVING. Do all the work for SOLVE. Dispatch on LEFT-SIDE's outer operator,
+;  to a function that solves LEFT-SIDE = RIGHT-SIDE for VARIABLE. Call ERROR,
+;  an undefined function, if we encounter an unknown operator.
+
+(define solving
+ (lambda (variable left-side right-side)
+  (if
+   (= variable left-side)
+   (make-op (quote =) left-side right-side)
+   (if
+    (= (op left-side) (quote +))
+    (solving-add variable left-side right-side)
+    (if
+     (= (op left-side) (quote -))
+     (solving-subtract variable left-side right-side)
+     (if
+      (= (op left-side) (quote *))
+      (solving-multiply variable left-side right-side)
+      (if
+       (= (op left-side) (quote /))
+       (solving-divide variable left-side right-side)
+       (error))))))) )
+
+;  SOLVING-ADD. Solve LEFT-SIDE = RIGHT-SIDE for VARIABLE. LEFT-SIDE's outer
+;  operator is +.
+
+(define solving-add
+ (lambda (variable left-side right-side)
+  (if
+   (is-inside variable (left left-side))
+   (solving variable
+    (left left-side)
+    (make-op (quote -) right-side (right left-side)))
+   (solving variable
+    (right left-side)
+    (make-op (quote -) right-side (left left-side))))) )
+
+;  SOLVING-SUBTRACT. Solve LEFT-SIDE = RIGHT-SIDE for VARIABLE. LEFT-SIDE's
+;  outer operator is −.
+
+(define solving-subtract
+ (lambda (variable left-side right-side)
+  (if
+   (is-inside variable (left left-side))
+   (solving variable
+    (left left-side)
+    (make-op (quote +) (right left-side) right-side))
+   (solving variable
+    (right left-side)
+    (make-op (quote -) (left left-side) right-side)))) )
+
+;  SOLVING-MULTIPLY. Solve LEFT-SIDE = RIGHT-SIDE for VARIABLE. LEFT-SIDE's
+;  outer operator is ∗.
+
+(define solving-multiply
+ (lambda (variable left-side right-side)
+  (if
+   (is-inside variable (left left-side))
+   (solving variable
+    (left left-side)
+    (make-op (quote /) right-side (right left-side)))
+   (solving variable
+    (right left-side)
+    (make-op (quote /) right-side (left left-side))))) )
+
+;  SOLVING-DIVIDE. Solve LEFT-SIDE = RIGHT-SIDE for VARIABLE. LEFT-SIDE's outer
+;  operator is /. We ignore the possibility of dividing by 0.
+
+(define solving-divide
+ (lambda (variable left-side right-side)
+  (if
+   (is-inside variable (left left-side))
+   (solving variable
+    (left left-side)
+    (make-op (quote *) (right left-side) right-side))
+   (solving variable
+    (right left-side)
+    (make-op (quote /) (left left-side) right-side)))) )
+
+;  IS-INDIDE. Test if VARIABLE appears inside EXPRESSION. Assume EXPRESSION is
+;  either a symbol, or else a list of the form (∘ α β).
+
+(define is-inside
+ (lambda (variable expression)
+  (if
+   (is-symbol expression)
+   (= variable expression)
+   (or
+    (is-inside variable (left expression))
+    (is-inside variable (right expression))))) )
+
+;  MAKE-OP. Return the list (OP LEFT RIGHT).
+
+(define make-op
+ (lambda (op left right)
+  (cons op (cons left (cons right nil)))) )
+
+;  OP. Assume EXPRESSION is (∘ α β). Return ∘.
+
+(define op car)
+
+;  LEFT. Assume EXPRESSION is (∘ α β). Return α.
+
+(define left
+ (lambda (expression)
+  (car (cdr expression))) )
+
+;  RIGHT. Assume EXPRESSION is (∘ α β). Return β.
+
+(define right
+ (lambda (expression)
+  (car (cdr (cdr expression)))) )
+
+;  Tests. These are not worth any points! they simply verify that the functions
+;  work properly. The comments show what will be returned.
+
+(is-inside (quote x) (quote x))              ;  t
+(is-inside (quote x) (quote y))              ;  nil
+(is-inside (quote x) (quote (+ x y)))        ;  t
+(is-inside (quote x) (quote (+ a b)))        ;  nil
+(is-inside (quote +) (quote (+ a b)))        ;  nil
+(is-inside (quote x) (quote (+ (* m x) b)))  ;  t
+
+(solve (quote x) (quote (+ a x)) (quote c))              ;  (= x (- c a))
+(solve (quote x) (quote (+ x b)) (quote c))              ;  (= x (- c b))
+(solve (quote x) (quote (- x b)) (quote c))              ;  (= x (+ b c))
+(solve (quote x) (quote c)       (quote (* a x)))        ;  (= x (/ c a))
+(solve (quote x) (quote (* x b)) (quote c))              ;  (= x (/ c b))
+(solve (quote x) (quote (/ a x)) (quote c))              ;  (= x (/ a c))
+(solve (quote x) (quote (/ x b)) (quote c))              ;  (= x (* b c))
+(solve (quote x) (quote y)       (quote (+ (* m x) b)))  ;  (= x (/ (- y b) m))
+
+(solve
+ (quote a)
+ (quote (+ b c))
+ (quote (* d (- (/ a e) f))))  ;  (= a (* e (+ f (/ (+ b c) d))))
+
+end
